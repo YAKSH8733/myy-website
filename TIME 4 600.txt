@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Timing Calculator - Created by YR PRAJAPATI</title>
+    <style>
+        body {
+            background: linear-gradient(to right, #FF6F61, #D72638);
+            font-family: Arial, sans-serif;
+            text-align: center;
+            color: white;
+            margin: 0;
+            padding: 0;
+        }
+        #loginPage, #mainPage {
+            display: none;
+            padding: 20px;
+        }
+        #loginBox {
+            background: white;
+            color: black;
+            padding: 30px;
+            border-radius: 10px;
+            max-width: 300px;
+            margin: 100px auto;
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+        }
+        input[type="password"], input[type="time"], input[type="number"], textarea {
+            width: 90%;
+            padding: 8px;
+            margin-top: 10px;
+        }
+        button {
+            background: #D72638;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        table {
+            width: 95%;
+            margin: 20px auto;
+            border-collapse: collapse;
+            background: #fff;
+            color: black;
+        }
+        th, td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background: #FF8C00;
+            color: white;
+        }
+        .indicator-dot {
+            font-size: 24px;
+        }
+        .indicator-summary {
+            font-weight: bold;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Login Page -->
+    <div id="loginPage">
+        <div id="loginBox">
+            <h2>Enter Password</h2>
+            <input type="password" id="passwordInput" placeholder="Password" />
+            <button onclick="checkPassword()">Login</button>
+            <p id="errorMsg" style="color:red;"></p>
+        </div>
+    </div>
+
+    <!-- Main Calculator Page -->
+    <div id="mainPage">
+        <h1>Timing Calculator</h1>
+        <h3>Created by YR PRAJAPATI</h3>
+
+        <!-- Indicator Info List -->
+        <ul style="list-style: none; padding: 0; font-size: 18px;">
+            <li><strong style="color:black;">BLACK</strong> - 11:01</li>
+            <li><strong style="color:red;">RED</strong> - ERROR SOME</li>
+            <li><strong style="color:blue;">BLUE</strong> - MINUSES MINUTE</li>
+            <li><strong style="color:purple;">PURPLE</strong> - absent</li>
+        </ul>
+
+        <h3>Total Final Minutes: <span id="grandTotal">0</span></h3>
+        <div class="indicator-summary">
+            <span id="countBlack">BLACK: 0</span> |
+            <span id="countRed">RED: 0</span> |
+            <span id="countBlue">BLUE: 0</span> |
+            <span id="countPurple">PURPLE: 0</span>
+        </div>
+
+        <input type="file" id="excelInput" accept=".xlsx, .xls">
+
+        <textarea id="bulkInTime" placeholder="Paste IN TIME data here..." rows="5"></textarea>
+        <button onclick="pasteInTime()">Add IN TIME</button>
+
+        <textarea id="bulkOutTime" placeholder="Paste OUT TIME data here..." rows="5"></textarea>
+        <button onclick="pasteOutTime()">Add OUT TIME</button>
+
+        <button onclick="exportToExcel()">Export to Excel</button>
+
+        <table>
+            <tr>
+                <th>SR No</th>
+                <th>IN TIME</th>
+                <th>OUT TIME</th>
+                <th>SECOND IN TIME</th>
+                <th>SECOND OUT TIME</th>
+                <th>First Session Minutes</th>
+                <th>Second Session Minutes</th>
+                <th>Total Minutes</th>
+                <th>Adjustment (+/- Minutes)</th>
+                <th>Final Total Minutes</th>
+                <th>Indicator</th>
+            </tr>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+    <script>
+        document.getElementById("loginPage").style.display = "block";
+
+        function checkPassword() {
+            const input = document.getElementById("passwordInput").value;
+            if (input === "123") {
+                document.getElementById("loginPage").style.display = "none";
+                document.getElementById("mainPage").style.display = "block";
+            } else {
+                document.getElementById("errorMsg").innerText = "Incorrect password!";
+            }
+        }
+
+        function pasteInTime() {
+            let inputData = document.getElementById('bulkInTime').value.trim().split('\n');
+            for (let i = 0; i < Math.min(inputData.length, 32); i++) {
+                document.getElementById(`inTime${i+1}`).value = inputData[i].trim();
+            }
+            autoCalculate();
+        }
+
+        function pasteOutTime() {
+            let inputData = document.getElementById('bulkOutTime').value.trim().split('\n');
+            for (let i = 0; i < Math.min(inputData.length, 32); i++) {
+                document.getElementById(`outTime${i+1}`).value = inputData[i].trim();
+            }
+            autoCalculate();
+        }
+
+        function timeDifference(start, end) {
+            if (!start || !end) return 0;
+            let [sh, sm] = start.split(':').map(Number);
+            let [eh, em] = end.split(':').map(Number);
+            return (eh * 60 + em) - (sh * 60 + sm);
+        }
+
+        let black = 0, red = 0, blue = 0, purple = 0;
+
+        function calculateTime(index) {
+            let inTime = document.getElementById(`inTime${index}`).value;
+            let outTime = document.getElementById(`outTime${index}`).value;
+            let secondInTime = document.getElementById(`secondInTime${index}`).value;
+            let secondOutTime = document.getElementById(`secondOutTime${index}`).value;
+            let adjustment = Number(document.getElementById(`adjustment${index}`).value);
+
+            let firstSession = timeDifference(inTime, outTime);
+            let secondSession = timeDifference(secondInTime, secondOutTime);
+            let totalMinutes = firstSession - secondSession;
+            let finalTotal = totalMinutes + adjustment;
+
+            document.getElementById(`firstSession${index}`).innerText = firstSession;
+            document.getElementById(`secondSession${index}`).innerText = secondSession;
+            document.getElementById(`totalMinutes${index}`).innerText = totalMinutes;
+            document.getElementById(`finalTotal${index}`).innerText = finalTotal;
+
+            let indicatorHTML = "";
+            let hasIndicator = false;
+
+            if (finalTotal < 0 && finalTotal > -100) {
+                indicatorHTML += `<span class="indicator-dot" style="color:blue;">●</span>`;
+                blue++;
+                hasIndicator = true;
+            } else if (finalTotal <= -100) {
+                indicatorHTML += `<span class="indicator-dot" style="color:red;">●</span>`;
+                red++;
+                hasIndicator = true;
+            }
+
+            if (!inTime && !outTime) {
+                indicatorHTML += `<span class="indicator-dot" style="color:purple;">●</span>`;
+                purple++;
+                hasIndicator = true;
+            }
+
+            if (inTime) {
+                let [hour, minute] = inTime.split(":").map(Number);
+                if (hour > 11 || (hour === 11 && minute >= 1)) {
+                    indicatorHTML += `<span class="indicator-dot" style="color:black;">●</span>`;
+                    black++;
+                    hasIndicator = true;
+                }
+            }
+
+            document.getElementById(`indicator${index}`).innerHTML = indicatorHTML;
+        }
+
+        function updateGrandTotal() {
+            let sum = 0;
+            for (let i = 1; i <= 32; i++) {
+                sum += Number(document.getElementById(`finalTotal${i}`).innerText || 0);
+            }
+            document.getElementById('grandTotal').innerText = sum;
+        }
+
+        function autoCalculate() {
+            black = red = blue = purple = 0;
+            for (let i = 1; i <= 32; i++) {
+                calculateTime(i);
+            }
+            updateGrandTotal();
+            document.getElementById('countBlack').innerText = `BLACK: ${black}`;
+            document.getElementById('countRed').innerText = `RED: ${red}`;
+            document.getElementById('countBlue').innerText = `BLUE: ${blue}`;
+            document.getElementById('countPurple').innerText = `PURPLE: ${purple}`;
+        }
+
+        function exportToExcel() {
+            let table = document.querySelector("table");
+            let wb = XLSX.utils.table_to_book(table, {sheet:"Sheet1"});
+            XLSX.writeFile(wb, "Timing_Calculator.xlsx");
+        }
+
+        window.onload = () => {
+            let tbody = document.getElementById('tableBody');
+            for (let i = 1; i <= 32; i++) {
+                tbody.innerHTML += `
+                <tr>
+                    <td>${i}</td>
+                    <td><input type="time" id="inTime${i}" step="60" oninput="autoCalculate()"></td>
+                    <td><input type="time" id="outTime${i}" step="60" oninput="autoCalculate()"></td>
+                    <td><input type="time" id="secondInTime${i}" step="60" oninput="autoCalculate()"></td>
+                    <td><input type="time" id="secondOutTime${i}" step="60" oninput="autoCalculate()"></td>
+                    <td><span id="firstSession${i}"></span></td>
+                    <td><span id="secondSession${i}"></span></td>
+                    <td><span id="totalMinutes${i}"></span></td>
+                    <td><input type="number" id="adjustment${i}" value="-600" oninput="autoCalculate()"></td>
+                    <td><span id="finalTotal${i}"></span></td>
+                    <td><span id="indicator${i}"></span></td>
+                </tr>`;
+            }
+        };
+    </script>
+</body>
+</html>
